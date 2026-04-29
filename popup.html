@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>LeetCode GitHub Pusher</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="header">
+        <div>
+          <p class="eyebrow">LeetCode GitHub Pusher</p>
+          <h1>推送目前解答</h1>
+        </div>
+        <span id="pageStatus" class="status muted">讀取中</span>
+      </header>
+
+      <section class="section">
+        <div class="problem-row">
+          <div>
+            <label>題目</label>
+            <strong id="problemTitle">尚未偵測</strong>
+          </div>
+          <div>
+            <label>難度</label>
+            <strong id="problemDifficulty">-</strong>
+          </div>
+        </div>
+
+        <div class="field-grid">
+          <label>
+            語言
+            <input id="languageInput" autocomplete="off" placeholder="python3">
+          </label>
+          <label>
+            檔案路徑
+            <input id="pathPreview" readonly>
+          </label>
+        </div>
+
+        <label>
+          程式碼
+          <textarea id="codeInput" spellcheck="false" placeholder="如果沒有自動抓到，可以先在這裡貼上；後續版本會補強不同 LeetCode 編輯器狀態的擷取。"></textarea>
+        </label>
+      </section>
+
+      <section class="section settings">
+        <details open>
+          <summary>GitHub 設定</summary>
+
+          <label>
+            Fine-grained token
+            <input id="tokenInput" type="password" autocomplete="off" placeholder="github_pat_...">
+          </label>
+
+          <div class="field-grid">
+            <label>
+              Owner
+              <input id="ownerInput" autocomplete="off" placeholder="your-account">
+            </label>
+            <label>
+              Repo
+              <input id="repoInput" autocomplete="off" placeholder="coding-solutions">
+            </label>
+          </div>
+
+          <div class="field-grid">
+            <label>
+              Branch
+              <input id="branchInput" autocomplete="off" placeholder="main">
+            </label>
+            <label>
+              Base folder
+              <input id="baseFolderInput" autocomplete="off" placeholder="留空代表 repo 根目錄">
+            </label>
+          </div>
+
+          <label>
+            Path template
+            <input id="templateInput" autocomplete="off" placeholder="{baseFolder}/{problemIdSlug}/solution.{ext}">
+          </label>
+
+          <button id="saveSettingsButton" class="secondary" type="button">儲存設定</button>
+        </details>
+      </section>
+
+      <section class="actions">
+        <button id="pushButton" type="button">Push to GitHub</button>
+        <p id="message" class="message"></p>
+      </section>
+    </main>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

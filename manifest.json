@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "LeetCode GitHub Pusher",
+  "description": "Push the current LeetCode solution to a GitHub repository from the problem page.",
+  "version": "0.1.0",
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Push solution to GitHub"
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "permissions": [
+    "activeTab",
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://api.github.com/*",
+    "https://leetcode.com/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": [
+        "https://leetcode.com/problems/*"
+      ],
+      "js": [
+        "content/leetcode.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
