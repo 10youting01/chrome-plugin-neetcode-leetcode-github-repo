@@ -105,14 +105,14 @@ async function saveSettings() {
 async function loadCurrentProblem() {
   try {
     const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!tab?.id || !tab.url?.includes("leetcode.com/problems/")) {
+    if (!tab?.id || !isSupportedProblemUrl(tab.url || "")) {
       setPageStatus("非題目頁", "error");
-      setMessage("請在 LeetCode 題目頁打開插件。", "error");
+      setMessage("請在 LeetCode 或 NeetCode 題目頁打開插件。", "error");
       els.pushButton.disabled = true;
       return;
     }
 
-    const response = await chrome.tabs.sendMessage(tab.id, { type: "GET_LEETCODE_PROBLEM" });
+    const response = await chrome.tabs.sendMessage(tab.id, { type: "GET_CURRENT_PROBLEM" });
     if (!response?.ok) {
       throw new Error(response?.error || "讀取 LeetCode 頁面失敗");
     }
@@ -188,7 +188,7 @@ function buildProblemPayload() {
     language,
     ext,
     code: els.codeInput.value,
-    platform: "leetcode"
+    platform: currentProblem?.platform || "leetcode"
   };
 
   return {
@@ -223,8 +223,12 @@ function refreshPathPreview() {
     ...currentProblem,
     language,
     ext: extensionForLanguage(language),
-    platform: "leetcode"
+    platform: currentProblem.platform || "leetcode"
   });
+}
+
+function isSupportedProblemUrl(url) {
+  return url.includes("leetcode.com/problems/") || url.includes("neetcode.io/");
 }
 
 function buildPath(template, settings, problem) {
@@ -232,6 +236,13 @@ function buildPath(template, settings, problem) {
   const slug = normalizePathPart(problem.slug || slugify(problem.displayTitle || "solution"));
   const idSlug = id ? `${id}.${slug}` : slug;
   const problemIdSlug = id ? `${id}-${slug}` : slug;
+  let pathTemplate = template;
+  if (!id) {
+    pathTemplate = pathTemplate
+      .replace(/\{id\}[.-]/g, "")
+      .replace(/\{id\}/g, "");
+  }
+
   const values = {
     baseFolder: normalizePathPart(settings.baseFolder || ""),
     difficulty: normalizePathPart(problem.difficulty || "unknown").toLowerCase(),
@@ -244,7 +255,10 @@ function buildPath(template, settings, problem) {
     slug
   };
 
-  return template.replace(/\{(\w+)\}/g, (_, key) => values[key] ?? "").replace(/\/+/g, "/");
+  return pathTemplate
+    .replace(/\{(\w+)\}/g, (_, key) => values[key] ?? "")
+    .replace(/\/+/g, "/")
+    .replace(/^\/+|\/+$/g, "");
 }
 
 function extensionForLanguage(language = "") {

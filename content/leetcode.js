@@ -1,5 +1,5 @@
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
-  if (message?.type !== "GET_LEETCODE_PROBLEM") {
+  if (!["GET_LEETCODE_PROBLEM", "GET_CURRENT_PROBLEM"].includes(message?.type)) {
     return false;
   }
 

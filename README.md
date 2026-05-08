@@ -4,7 +4,7 @@
 
 ## 目前功能
 
-- 偵測 LeetCode 題目頁的 slug、標題、難度與語言。
+- 偵測 LeetCode / NeetCode 題目頁的 slug、標題、難度與語言。
 - 嘗試從 Monaco editor 讀取目前程式碼。
 - 支援手動修改程式碼內容後再推送。
 - 使用 GitHub REST API 建立或更新根目錄解題檔案。
@@ -17,7 +17,7 @@
 2. 開啟右上角 `Developer mode`。
 3. 點 `Load unpacked`。
 4. 選這個資料夾。
-5. 打開 LeetCode 題目頁，重新整理頁面，再開插件。
+5. 打開 LeetCode 或 NeetCode 題目頁，重新整理頁面，再開插件。
 
 ## GitHub token 權限
 
@@ -61,7 +61,7 @@
 ## 下一階段候選功能
 
 - Accepted 後自動推送。
-- NeetCode 題單分類與 LeetCode 題目對應。
+- NeetCode 題單分類與更完整的 LeetCode 題號對應。
 - 歷史 submissions 回填。
 - README 進度表。
 - GitHub OAuth 登入，不需要手動貼 token。
