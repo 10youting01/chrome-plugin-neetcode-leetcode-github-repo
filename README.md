@@ -6,6 +6,7 @@
 
 - 偵測 LeetCode / NeetCode 題目頁的 slug、標題、難度與語言。
 - 嘗試從 Monaco editor 讀取目前程式碼。
+- NeetCode 會優先讀目前頁面的 CodeMirror editor；localStorage 只作為當前 slug 的 fallback，避免抓到上一題殘留程式碼。
 - 支援手動修改程式碼內容後再推送。
 - 使用 GitHub REST API 建立或更新根目錄解題檔案。
 - 預設符合 `10youting01/leetcode-solutions` 的單檔命名格式。

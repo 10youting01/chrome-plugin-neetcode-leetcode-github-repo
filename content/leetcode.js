@@ -203,7 +203,7 @@ function getCodeFromPageContext(slug) {
         const slug = ${JSON.stringify(slug)};
         try {
           const models = window.monaco?.editor?.getModels?.() || [];
-          const preferred = models.find((model) => String(model.uri || "").includes(slug)) || models.find((model) => model.getValue?.().trim()) || models[0];
+          const preferred = models.find((model) => String(model.uri || "").includes(slug));
           const code = preferred?.getValue?.() || "";
           const language = preferred?.getLanguageId?.() || "";
           window.postMessage({ type: "LC_GITHUB_PUSHER_CODE_RESULT", requestId, code, language }, "*");

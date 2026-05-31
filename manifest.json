@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "LeetCode GitHub Pusher",
   "description": "Push the current LeetCode or NeetCode solution to a GitHub repository from the problem page.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "action": {
     "default_popup": "popup.html",
     "default_title": "Push solution to GitHub"

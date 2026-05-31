@@ -177,18 +177,6 @@ function getCodeFromPageContext(slug) {
         const requestId = ${JSON.stringify(requestId)};
         const slug = ${JSON.stringify(slug)};
         try {
-          const monacoModels = window.monaco?.editor?.getModels?.() || [];
-          const monacoModel = monacoModels.find((model) => String(model.uri || "").includes(slug)) || monacoModels.find((model) => model.getValue?.().trim()) || monacoModels[0];
-          if (monacoModel?.getValue?.()) {
-            window.postMessage({
-              type: "NC_GITHUB_PUSHER_CODE_RESULT",
-              requestId,
-              code: monacoModel.getValue(),
-              language: monacoModel.getLanguageId?.() || ""
-            }, "*");
-            return;
-          }
-
           const cmState = document.querySelector(".cm-content")?.cmView?.view?.state;
           if (cmState?.doc) {
             window.postMessage({
@@ -196,6 +184,18 @@ function getCodeFromPageContext(slug) {
               requestId,
               code: cmState.doc.toString(),
               language: ""
+            }, "*");
+            return;
+          }
+
+          const monacoModels = window.monaco?.editor?.getModels?.() || [];
+          const monacoModel = monacoModels.find((model) => String(model.uri || "").includes(slug));
+          if (monacoModel?.getValue?.()) {
+            window.postMessage({
+              type: "NC_GITHUB_PUSHER_CODE_RESULT",
+              requestId,
+              code: monacoModel.getValue(),
+              language: monacoModel.getLanguageId?.() || ""
             }, "*");
             return;
           }
@@ -218,7 +218,7 @@ function getCodeFromLocalStorage(slug) {
     if (!key) continue;
     const value = localStorage.getItem(key);
     if (!value) continue;
-    if (key.includes(slug) || value.includes(slug) || /code|editor|solution|submission/i.test(key)) {
+    if (key.includes(slug) || value.includes(slug)) {
       values.push(value);
     }
   }
