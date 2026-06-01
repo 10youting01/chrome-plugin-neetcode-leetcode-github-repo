@@ -4,10 +4,11 @@ const DEFAULT_SETTINGS = {
   repo: "leetcode-solutions",
   branch: "main",
   baseFolder: "",
-  pathTemplate: "{id}.{slug}.{ext}"
+  pathTemplate: "{id}.{title}.{ext}"
 };
 
 const LEGACY_PATH_TEMPLATE = "{baseFolder}/{problemIdSlug}/solution.{ext}";
+const LEGACY_DEFAULT_PATH_TEMPLATE = "{id}.{slug}.{ext}";
 
 const EXTENSIONS = {
   c: "c",
@@ -80,6 +81,10 @@ async function loadSettings() {
   currentSettings.repo = currentSettings.repo || DEFAULT_SETTINGS.repo;
 
   if (currentSettings.pathTemplate === LEGACY_PATH_TEMPLATE) {
+    currentSettings.pathTemplate = DEFAULT_SETTINGS.pathTemplate;
+  }
+
+  if (currentSettings.pathTemplate === LEGACY_DEFAULT_PATH_TEMPLATE) {
     currentSettings.pathTemplate = DEFAULT_SETTINGS.pathTemplate;
   }
 
@@ -233,6 +238,7 @@ function isSupportedProblemUrl(url) {
 
 function buildPath(template, settings, problem) {
   const id = normalizePathPart(problem.questionId || problem.id || "");
+  const title = normalizeTitlePart(problem.title || problem.displayTitle || problem.slug || "solution");
   const slug = normalizePathPart(problem.slug || slugify(problem.displayTitle || "solution"));
   const idSlug = id ? `${id}.${slug}` : slug;
   const problemIdSlug = id ? `${id}-${slug}` : slug;
@@ -250,6 +256,8 @@ function buildPath(template, settings, problem) {
     id,
     language: normalizePathPart(problem.language || "text").toLowerCase(),
     platform: normalizePathPart(problem.platform || "leetcode"),
+    title,
+    displayTitle: title,
     idSlug,
     problemIdSlug,
     slug
@@ -280,6 +288,17 @@ function normalizePathPart(value) {
     .replace(/^\/+|\/+$/g, "")
     .replace(/\s+/g, "-")
     .replace(/[^a-zA-Z0-9._/-]/g, "-")
+    .replace(/-+/g, "-");
+}
+
+function normalizeTitlePart(value) {
+  return String(value || "")
+    .trim()
+    .replace(/\\/g, "/")
+    .replace(/^\/+|\/+$/g, "")
+    .replace(/\s+/g, "-")
+    .replace(/\//g, "-")
+    .replace(/[^a-zA-Z0-9._-]/g, "-")
     .replace(/-+/g, "-");
 }
 

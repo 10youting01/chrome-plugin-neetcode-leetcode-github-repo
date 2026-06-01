@@ -9,7 +9,7 @@
 - NeetCode 會優先讀目前頁面的 CodeMirror editor；localStorage 只作為當前 slug 的 fallback，避免抓到上一題殘留程式碼。
 - 支援手動修改程式碼內容後再推送。
 - 使用 GitHub REST API 建立或更新根目錄解題檔案。
-- 預設符合 `10youting01/leetcode-solutions` 的單檔命名格式。
+- 預設符合 `10youting01/leetcode-solutions` 的單檔命名格式，並優先使用題目標題。
 - 可設定 owner、repo、branch、base folder、路徑模板。
 
 ## 安裝方式
@@ -38,13 +38,13 @@
 預設路徑模板：
 
 ```txt
-{id}.{slug}.{ext}
+{id}.{title}.{ext}
 ```
 
 例如 Two Sum 的 Python 解答會寫入：
 
 ```txt
-1.two-sum.py
+1.Two-Sum.py
 ```
 
 ## 可用模板變數
@@ -52,6 +52,8 @@
 - `{baseFolder}`
 - `{platform}`
 - `{id}`
+- `{title}`
+- `{displayTitle}`
 - `{slug}`
 - `{idSlug}`
 - `{problemIdSlug}`

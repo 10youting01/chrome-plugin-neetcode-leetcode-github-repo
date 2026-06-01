@@ -27,6 +27,7 @@ async function collectProblem() {
     slug,
     questionId: titleInfo.questionId,
     displayTitle: titleInfo.displayTitle,
+    title: titleInfo.displayTitle,
     difficulty: getDifficulty(),
     language: chooseLanguage(codeResult.language, getLanguage(), code),
     code,

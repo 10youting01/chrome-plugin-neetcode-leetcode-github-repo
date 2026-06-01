@@ -26,6 +26,7 @@ async function collectProblem() {
     slug: questionData.titleSlug || slug,
     questionId: questionData.questionId || titleInfo.questionId,
     displayTitle: questionData.title || titleInfo.displayTitle,
+    title: questionData.title || titleInfo.displayTitle,
     difficulty: questionData.difficulty || getDifficulty(),
     language: chooseLanguage(codeResult.language, getLanguage(), code),
     code,
