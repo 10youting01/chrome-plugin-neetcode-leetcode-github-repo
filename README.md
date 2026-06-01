@@ -44,7 +44,7 @@
 例如 Two Sum 的 Python 解答會寫入：
 
 ```txt
-1.Two-Sum.py
+1.two-sum.py
 ```
 
 ## 可用模板變數

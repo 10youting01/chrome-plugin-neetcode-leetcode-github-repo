@@ -299,7 +299,8 @@ function normalizeTitlePart(value) {
     .replace(/\s+/g, "-")
     .replace(/\//g, "-")
     .replace(/[^a-zA-Z0-9._-]/g, "-")
-    .replace(/-+/g, "-");
+    .replace(/-+/g, "-")
+    .toLowerCase();
 }
 
 function slugify(value) {
