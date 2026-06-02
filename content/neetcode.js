@@ -138,11 +138,6 @@ async function getEditorCode(slug) {
     return fromPage;
   }
 
-  const fromStorage = getCodeFromLocalStorage(slug);
-  if (fromStorage.code) {
-    return fromStorage;
-  }
-
   return {
     code: "",
     language: getLanguage()
@@ -212,29 +207,6 @@ function getCodeFromPageContext(slug) {
   });
 }
 
-function getCodeFromLocalStorage(slug) {
-  const values = [];
-  for (let index = 0; index < localStorage.length; index += 1) {
-    const key = localStorage.key(index);
-    if (!key) continue;
-    const value = localStorage.getItem(key);
-    if (!value) continue;
-    if (key.includes(slug) || value.includes(slug)) {
-      values.push(value);
-    }
-  }
-
-  for (const value of values) {
-    const parsed = parsePossibleJson(value);
-    const found = findCodeInObject(parsed);
-    if (found) {
-      return found;
-    }
-  }
-
-  return { code: "", language: getLanguage() };
-}
-
 function getVisibleEditorCode() {
   const monacoLines = Array.from(document.querySelectorAll(".monaco-editor .view-line"))
     .map((line) => line.textContent || "")
@@ -250,56 +222,12 @@ function getVisibleEditorCode() {
     return codeMirrorLines.join("\n");
   }
 
-  const textarea = Array.from(document.querySelectorAll("textarea"))
-    .map((node) => node.value)
-    .find(looksLikeCode);
-  return textarea || "";
-}
+  const visibleBlocks = Array.from(document.querySelectorAll("pre code, pre"))
+    .map((node) => node.textContent || "")
+    .map((value) => value.trim())
+    .filter((value) => value && !isUrlLike(value));
 
-function parsePossibleJson(value) {
-  try {
-    return JSON.parse(value);
-  } catch (_error) {
-    return value;
-  }
-}
-
-function findCodeInObject(value) {
-  if (!value) {
-    return null;
-  }
-
-  if (typeof value === "string") {
-    if (looksLikeCode(value)) {
-      return { code: value, language: getLanguage() };
-    }
-    return null;
-  }
-
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      const found = findCodeInObject(item);
-      if (found) return found;
-    }
-    return null;
-  }
-
-  if (typeof value === "object") {
-    const code = value.code || value.typed_code || value.sourceCode || value.source_code || value.text || value.value;
-    if (typeof code === "string" && looksLikeCode(code)) {
-      return {
-        code,
-        language: normalizeLanguage(value.lang || value.language || value.languageId || getLanguage())
-      };
-    }
-
-    for (const item of Object.values(value)) {
-      const found = findCodeInObject(item);
-      if (found) return found;
-    }
-  }
-
-  return null;
+  return visibleBlocks.find(looksLikeCode) || "";
 }
 
 function chooseLanguage(...candidates) {
@@ -332,7 +260,15 @@ function inferLanguageFromCode(code) {
 }
 
 function looksLikeCode(value) {
-  return typeof value === "string" && value.length > 20 && /[\n;{}():=]/.test(value);
+  return typeof value === "string" && value.length > 20 && !isIsoTimestamp(value) && !isUrlLike(value) && /[\n;{}()=<>[\]]/.test(value);
+}
+
+function isIsoTimestamp(value) {
+  return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?$/.test(String(value || "").trim());
+}
+
+function isUrlLike(value) {
+  return /^https?:\/\//i.test(String(value || "").trim()) || /[?&][a-z0-9_-]+=/i.test(String(value || "")) || /^www\./i.test(String(value || "").trim());
 }
 
 function normalizeLanguage(value) {

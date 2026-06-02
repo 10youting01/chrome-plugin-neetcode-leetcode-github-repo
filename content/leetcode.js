@@ -163,11 +163,6 @@ async function getEditorCode(slug) {
     return fromPage;
   }
 
-  const fromStorage = getCodeFromLocalStorage(slug);
-  if (fromStorage.code) {
-    return fromStorage;
-  }
-
   return {
     code: "",
     language: getLanguage()
@@ -218,83 +213,33 @@ function getCodeFromPageContext(slug) {
   });
 }
 
-function getCodeFromLocalStorage(slug) {
-  const values = [];
-  for (let index = 0; index < localStorage.length; index += 1) {
-    const key = localStorage.key(index);
-    if (!key) continue;
-    const value = localStorage.getItem(key);
-    if (!value || (!key.includes(slug) && !value.includes(slug))) continue;
-    values.push(value);
-  }
-
-  for (const value of values) {
-    const parsed = parsePossibleJson(value);
-    const found = findCodeInObject(parsed);
-    if (found) {
-      return found;
-    }
-  }
-
-  return { code: "", language: getLanguage() };
-}
-
 function getVisibleEditorCode() {
   const lines = Array.from(document.querySelectorAll(".monaco-editor .view-line"))
     .map((line) => line.textContent || "")
     .filter((line) => line.trim() || line === "");
 
-  return lines.length ? lines.join("\n") : "";
-}
-
-function parsePossibleJson(value) {
-  try {
-    return JSON.parse(value);
-  } catch (_error) {
-    return value;
-  }
-}
-
-function findCodeInObject(value) {
-  if (!value) {
-    return null;
+  if (lines.length) {
+    return lines.join("\n");
   }
 
-  if (typeof value === "string") {
-    if (looksLikeCode(value)) {
-      return { code: value, language: getLanguage() };
-    }
-    return null;
-  }
+  const codeBlocks = Array.from(document.querySelectorAll("pre code, pre"))
+    .map((node) => node.textContent || "")
+    .map((value) => value.trim())
+    .filter((value) => value && !isUrlLike(value));
 
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      const found = findCodeInObject(item);
-      if (found) return found;
-    }
-    return null;
-  }
-
-  if (typeof value === "object") {
-    const code = value.code || value.typed_code || value.sourceCode || value.text;
-    if (typeof code === "string" && looksLikeCode(code)) {
-      return {
-        code,
-        language: normalizeLanguage(value.lang || value.language || value.languageId || getLanguage())
-      };
-    }
-
-    for (const item of Object.values(value)) {
-      const found = findCodeInObject(item);
-      if (found) return found;
-    }
-  }
-
-  return null;
+  return codeBlocks.find(looksLikeCode) || "";
 }
 
 function looksLikeCode(value) {
-  return value.length > 20 && /[\n;{}():=]/.test(value);
+  return value.length > 20 && !isIsoTimestamp(value) && !isUrlLike(value) && /[\n;{}()=<>[\]]/.test(value);
+}
+
+function isIsoTimestamp(value) {
+  return /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z?$/.test(String(value || "").trim());
+}
+
+function isUrlLike(value) {
+  return /^https?:\/\//i.test(String(value || "").trim()) || /[?&][a-z0-9_-]+=/i.test(String(value || "")) || /^www\./i.test(String(value || "").trim());
 }
 
 function findQuestionIdInBody(title) {
