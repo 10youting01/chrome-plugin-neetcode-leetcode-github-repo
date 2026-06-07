@@ -1,7 +1,8 @@
 const fs = require("fs");
+const path = require("path");
 const vm = require("vm");
 
-const repoRoot = "/Users/you/Documents/Codex/2026-04-29/chrome-plugin-neetcode-leetcode-github-repo";
+const repoRoot = path.resolve(__dirname, "..");
 
 function createLocalStorage(entries = {}) {
   const keys = Object.keys(entries);
