@@ -130,6 +130,55 @@ async function run() {
 
   assertEqual(visibleCode.getVisibleEditorCode(), "class Solution:\n    pass", "NeetCode should read explicit pre/code blocks");
 
+  const fallbackMonacoCode = "class Solution:\n    def twoSum(self, nums, target):\n        return [0, 1]";
+  const monacoSelection = loadModule("content/neetcode.js", {
+    location: {
+      href: "https://neetcode.io/problems/two-sum",
+      pathname: "/problems/two-sum"
+    }
+  });
+  const monacoModel = monacoSelection.findBestMonacoModel("two-sum", [
+    {
+      uri: "inmemory://model/1",
+      getValue: () => "{\"layout\":\"sidebar\"}",
+      getLanguageId: () => "json"
+    },
+    {
+      uri: "inmemory://model/2",
+      getValue: () => fallbackMonacoCode,
+      getLanguageId: () => "python"
+    }
+  ]);
+
+  assertEqual(monacoModel.getValue(), fallbackMonacoCode, "NeetCode should use a solution-like Monaco model even when its URI does not include the slug");
+
+  const codeMirrorCode = "function twoSum(nums, target) {\n  return [0, 1];\n}";
+  const codeMirrorSelection = loadModule("content/neetcode.js", {
+    queryMap: {
+      ".cm-editor, .cm-content, .cm-line": [
+        {
+          cmView: {
+            rootView: {
+              view: {
+                state: {
+                  doc: {
+                    toString: () => codeMirrorCode
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    location: {
+      href: "https://neetcode.io/problems/two-sum",
+      pathname: "/problems/two-sum"
+    }
+  });
+
+  assertEqual(codeMirrorSelection.findCodeMirrorDoc(), codeMirrorCode, "NeetCode should read full CodeMirror docs through nested view paths");
+
   console.log("content extraction smoke tests passed");
 }
 
