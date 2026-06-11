@@ -22,6 +22,17 @@
     "https://neetcode.io/*",
     "https://www.neetcode.io/*"
   ],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "content/neetcode-page-bridge.js"
+      ],
+      "matches": [
+        "https://neetcode.io/*",
+        "https://www.neetcode.io/*"
+      ]
+    }
+  ],
   "content_scripts": [
     {
       "matches": [

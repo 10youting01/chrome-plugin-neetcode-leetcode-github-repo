@@ -40,7 +40,12 @@ function loadModule(relativePath, options = {}) {
       pathname: "/problems/two-sum/"
     },
     chrome: {
-      runtime: { onMessage: { addListener() {} } }
+      runtime: {
+        getURL(path) {
+          return `chrome-extension://test/${path}`;
+        },
+        onMessage: { addListener() {} }
+      }
     },
     window: {
       setTimeout,
@@ -55,6 +60,11 @@ function loadModule(relativePath, options = {}) {
       body: { innerText: options.bodyText || "" },
       documentElement: {
         appendChild(node) {
+          if (node.src) {
+            options.onInjectedScriptSrc?.(node.src);
+            node.onload?.();
+            return;
+          }
           if (typeof node.textContent === "string" && node.textContent.includes("window.postMessage")) {
             options.onInjectedScript?.(node.textContent);
           }
@@ -63,7 +73,11 @@ function loadModule(relativePath, options = {}) {
       head: { appendChild() {} },
       createElement() {
         return {
+          dataset: {},
+          src: "",
           textContent: "",
+          onerror: null,
+          onload: null,
           remove() {}
         };
       },
@@ -86,7 +100,46 @@ function assertEqual(actual, expected, message) {
   }
 }
 
+function runPageBridge(options = {}) {
+  const source = fs.readFileSync(`${repoRoot}/content/neetcode-page-bridge.js`, "utf8");
+  const listeners = {};
+  const postedMessages = [];
+  const context = vm.createContext({
+    String,
+    Array,
+    window: {
+      monaco: options.monaco,
+      addEventListener(type, listener) {
+        listeners[type] = listener;
+      },
+      postMessage(message) {
+        postedMessages.push(message);
+      }
+    },
+    document: {
+      querySelectorAll(selector) {
+        return options.queryMap?.[selector] || [];
+      }
+    }
+  });
+
+  context.window.window = context.window;
+  vm.runInContext(source, context, { filename: "content/neetcode-page-bridge.js" });
+  return {
+    postRequest(data) {
+      listeners.message?.({ source: context.window, data });
+      return postedMessages[postedMessages.length - 1] || null;
+    }
+  };
+}
+
 async function run() {
+  const manifest = JSON.parse(fs.readFileSync(`${repoRoot}/manifest.json`, "utf8"));
+  const neetcodeSource = fs.readFileSync(`${repoRoot}/content/neetcode.js`, "utf8");
+  const webResources = manifest.web_accessible_resources?.flatMap((entry) => entry.resources || []) || [];
+  assertEqual(webResources.includes("content/neetcode-page-bridge.js"), true, "Manifest should expose the NeetCode page bridge as a packaged script");
+  assertEqual(neetcodeSource.includes('chrome.runtime.getURL("content/neetcode-page-bridge.js")'), true, "NeetCode should inject a packaged bridge script instead of inline page code");
+
   const staleStorage = createLocalStorage({
     "cached-code": JSON.stringify({
       slug: "two-sum",
@@ -131,29 +184,9 @@ async function run() {
   assertEqual(visibleCode.getVisibleEditorCode(), "class Solution:\n    pass", "NeetCode should read explicit pre/code blocks");
 
   const fallbackMonacoCode = "class Solution:\n    def twoSum(self, nums, target):\n        return [0, 1]";
-  const monacoSelection = loadModule("content/neetcode.js", {
-    location: {
-      href: "https://neetcode.io/problems/two-sum",
-      pathname: "/problems/two-sum"
-    }
-  });
-  const monacoModel = monacoSelection.findBestMonacoModel("two-sum", [
-    {
-      uri: "inmemory://model/1",
-      getValue: () => "{\"layout\":\"sidebar\"}",
-      getLanguageId: () => "json"
-    },
-    {
-      uri: "inmemory://model/2",
-      getValue: () => fallbackMonacoCode,
-      getLanguageId: () => "python"
-    }
-  ]);
-
-  assertEqual(monacoModel.getValue(), fallbackMonacoCode, "NeetCode should use a solution-like Monaco model even when its URI does not include the slug");
-
   const codeMirrorCode = "function twoSum(nums, target) {\n  return [0, 1];\n}";
-  const codeMirrorSelection = loadModule("content/neetcode.js", {
+
+  const codeMirrorBridge = runPageBridge({
     queryMap: {
       ".cm-editor, .cm-content, .cm-line": [
         {
@@ -170,14 +203,42 @@ async function run() {
           }
         }
       ]
-    },
-    location: {
-      href: "https://neetcode.io/problems/two-sum",
-      pathname: "/problems/two-sum"
     }
   });
+  const codeMirrorResult = codeMirrorBridge.postRequest({
+    type: "NC_GITHUB_PUSHER_CODE_REQUEST",
+    requestId: "cm-test",
+    slug: "two-sum"
+  });
 
-  assertEqual(codeMirrorSelection.findCodeMirrorDoc(), codeMirrorCode, "NeetCode should read full CodeMirror docs through nested view paths");
+  assertEqual(codeMirrorResult.code, codeMirrorCode, "NeetCode page bridge should read full CodeMirror docs through nested view paths");
+
+  const bridge = runPageBridge({
+    monaco: {
+      editor: {
+        getModels: () => [
+          {
+            uri: "inmemory://settings",
+            getValue: () => "{\"theme\":\"dark\"}",
+            getLanguageId: () => "json"
+          },
+          {
+            uri: "inmemory://untitled",
+            getValue: () => fallbackMonacoCode,
+            getLanguageId: () => "python"
+          }
+        ]
+      }
+    }
+  });
+  const bridgeResult = bridge.postRequest({
+    type: "NC_GITHUB_PUSHER_CODE_REQUEST",
+    requestId: "bridge-test",
+    slug: "two-sum"
+  });
+
+  assertEqual(bridgeResult.code, fallbackMonacoCode, "NeetCode page bridge should return full Monaco code from page context");
+  assertEqual(bridgeResult.requestId, "bridge-test", "NeetCode page bridge should preserve request IDs");
 
   console.log("content extraction smoke tests passed");
 }
