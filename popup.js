@@ -274,11 +274,39 @@ function extensionForLanguage(language = "") {
 }
 
 function normalizeLanguageInput(language = "") {
-  const normalized = String(language || "").trim().toLowerCase();
+  const normalized = readLanguageInputValue(language).trim().toLowerCase();
   if (!normalized || normalized === "text" || normalized === "plaintext" || normalized === "plain text") {
     return "python3";
   }
-  return normalized;
+  const aliases = {
+    "c++": "cpp",
+    cpp: "cpp",
+    "c#": "csharp",
+    csharp: "csharp",
+    golang: "golang",
+    go: "golang",
+    js: "javascript",
+    javascript: "javascript",
+    ts: "typescript",
+    typescript: "typescript"
+  };
+  return aliases[normalized] || normalized;
+}
+
+function readLanguageInputValue(language) {
+  const raw = String(language || "").trim();
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed === "string") {
+      return parsed;
+    }
+    if (parsed && typeof parsed === "object") {
+      return String(parsed.lang || parsed.language || parsed.value || raw);
+    }
+  } catch (_error) {
+    // Keep accepting the plain text users type into the popup.
+  }
+  return raw;
 }
 
 function normalizePathPart(value) {

@@ -23,8 +23,10 @@ function loadModule(relativePath, options = {}) {
   const source = fs.readFileSync(`${repoRoot}/${relativePath}`, "utf8");
   const queryMap = options.queryMap || {};
   const querySingleMap = options.querySingleMap || {};
+  const listeners = {};
+  let context;
 
-  const context = vm.createContext({
+  context = vm.createContext({
     console,
     Math,
     JSON,
@@ -50,9 +52,17 @@ function loadModule(relativePath, options = {}) {
     window: {
       setTimeout,
       clearTimeout,
-      addEventListener() {},
-      removeEventListener() {},
-      postMessage() {},
+      addEventListener(type, listener) {
+        listeners[type] = listener;
+      },
+      removeEventListener(type, listener) {
+        if (listeners[type] === listener) {
+          delete listeners[type];
+        }
+      },
+      postMessage(message) {
+        listeners.message?.({ source: context.window, data: message });
+      },
       monaco: options.monaco
     },
     document: {
@@ -67,6 +77,9 @@ function loadModule(relativePath, options = {}) {
           }
           if (typeof node.textContent === "string" && node.textContent.includes("window.postMessage")) {
             options.onInjectedScript?.(node.textContent);
+            if (options.executeInjectedScripts) {
+              vm.runInContext(node.textContent, context, { filename: `${relativePath}:injected` });
+            }
           }
         }
       },
@@ -90,6 +103,7 @@ function loadModule(relativePath, options = {}) {
     }
   });
 
+  context.window.window = context.window;
   vm.runInContext(source, context, { filename: relativePath });
   return context;
 }
@@ -98,6 +112,50 @@ function assertEqual(actual, expected, message) {
   if (actual !== expected) {
     throw new Error(`${message}\nExpected: ${JSON.stringify(expected)}\nActual: ${JSON.stringify(actual)}`);
   }
+}
+
+function loadPopupModule() {
+  const source = fs.readFileSync(`${repoRoot}/popup.js`, "utf8");
+  const elements = {};
+  const context = vm.createContext({
+    console,
+    JSON,
+    String,
+    Object,
+    RegExp,
+    document: {
+      getElementById(id) {
+        elements[id] ||= {
+          value: "",
+          textContent: "",
+          className: "",
+          innerHTML: "",
+          disabled: false,
+          addEventListener() {}
+        };
+        return elements[id];
+      },
+      addEventListener() {}
+    },
+    chrome: {
+      storage: {
+        local: {
+          get: async () => ({}),
+          set: async () => {}
+        }
+      },
+      tabs: {
+        query: async () => [],
+        sendMessage: async () => ({ ok: false })
+      },
+      runtime: {
+        sendMessage: async () => ({ ok: true, files: [] })
+      }
+    }
+  });
+
+  vm.runInContext(source, context, { filename: "popup.js" });
+  return context;
 }
 
 function runPageBridge(options = {}) {
@@ -155,6 +213,65 @@ async function run() {
 
   const leetcodeResult = await leetcode.getEditorCode("two-sum");
   assertEqual(leetcodeResult.code, "", "LeetCode should not fall back to localStorage code");
+
+  const leetcodeStoredCpp = loadModule("content/leetcode.js", {
+    localStorage: createLocalStorage({
+      global_lang: JSON.stringify("CPP")
+    })
+  });
+  assertEqual(leetcodeStoredCpp.getLanguage(), "cpp", "LeetCode should normalize stored CPP language values to cpp");
+
+  const longCppCode = [
+    "#include <vector>",
+    "using namespace std;",
+    "",
+    "class Solution {",
+    "public:",
+    "    vector<int> twoSum(vector<int>& nums, int target) {",
+    "        for (int i = 0; i < nums.size(); ++i) {",
+    "            for (int j = i + 1; j < nums.size(); ++j) {",
+    "                if (nums[i] + nums[j] == target) {",
+    "                    return {i, j};",
+    "                }",
+    "            }",
+    "        }",
+    "        return {};",
+    "    }",
+    "};"
+  ].join("\n");
+  const leetcodeMonaco = loadModule("content/leetcode.js", {
+    executeInjectedScripts: true,
+    monaco: {
+      editor: {
+        getModels: () => [
+          {
+            uri: "inmemory://settings",
+            getValue: () => "{\"theme\":\"dark\"}",
+            getLanguageId: () => "json"
+          },
+          {
+            uri: "inmemory://model/1",
+            getValue: () => longCppCode,
+            getLanguageId: () => "CPP"
+          }
+        ]
+      }
+    },
+    queryMap: {
+      ".monaco-editor .view-line": [
+        { textContent: "#include <vector>" },
+        { textContent: "using namespace std;" },
+        { textContent: "class Solution {" }
+      ]
+    }
+  });
+  const leetcodeMonacoResult = await leetcodeMonaco.getEditorCode("two-sum");
+  assertEqual(leetcodeMonacoResult.code, longCppCode, "LeetCode should read full Monaco code even when the model URI does not include the slug");
+  assertEqual(leetcodeMonacoResult.language, "cpp", "LeetCode should normalize Monaco CPP language values to cpp");
+
+  const popup = loadPopupModule();
+  assertEqual(popup.normalizeLanguageInput(JSON.stringify("CPP")), "cpp", "Popup should normalize quoted CPP language values to cpp");
+  assertEqual(popup.extensionForLanguage("CPP"), "cpp", "Popup should map CPP language values to the cpp extension");
 
   const neetcode = loadModule("content/neetcode.js", {
     localStorage: staleStorage,

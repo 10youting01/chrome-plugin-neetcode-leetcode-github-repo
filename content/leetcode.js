@@ -151,10 +151,26 @@ function readLocalStorageLanguage() {
   for (const key of keys) {
     const value = localStorage.getItem(key);
     if (value) {
-      return normalizeLanguage(value);
+      return normalizeLanguage(readStoredLanguageValue(value));
     }
   }
   return "";
+}
+
+function readStoredLanguageValue(value) {
+  const raw = String(value || "").trim();
+  try {
+    const parsed = JSON.parse(raw);
+    if (typeof parsed === "string") {
+      return parsed;
+    }
+    if (parsed && typeof parsed === "object") {
+      return parsed.lang || parsed.language || parsed.value || raw;
+    }
+  } catch (_error) {
+    // Plain localStorage values are common; fall through to the raw string.
+  }
+  return raw;
 }
 
 async function getEditorCode(slug) {
@@ -199,12 +215,48 @@ function getCodeFromPageContext(slug) {
         const slug = ${JSON.stringify(slug)};
         try {
           const models = window.monaco?.editor?.getModels?.() || [];
-          const preferred = models.find((model) => String(model.uri || "").includes(slug));
+          const preferred = findBestMonacoModel(models, slug);
           const code = preferred?.getValue?.() || "";
           const language = preferred?.getLanguageId?.() || "";
           window.postMessage({ type: "LC_GITHUB_PUSHER_CODE_RESULT", requestId, code, language }, "*");
         } catch (error) {
           window.postMessage({ type: "LC_GITHUB_PUSHER_CODE_RESULT", requestId, code: "", language: "" }, "*");
+        }
+
+        function findBestMonacoModel(models, slug) {
+          const candidates = Array.from(models || []).filter((model) => model?.getValue?.());
+          const slugMatch = candidates.find((model) => String(model.uri || "").includes(slug) && looksLikeEditorCode(model.getValue()));
+          if (slugMatch) {
+            return slugMatch;
+          }
+
+          return candidates
+            .map((model) => ({ model, score: scoreMonacoModel(model) }))
+            .filter((entry) => entry.score > 0)
+            .sort((a, b) => b.score - a.score)[0]?.model || null;
+        }
+
+        function scoreMonacoModel(model) {
+          const code = String(model?.getValue?.() || "");
+          const language = String(model?.getLanguageId?.() || "").toLowerCase();
+          let score = 0;
+          if (!looksLikeEditorCode(code)) return 0;
+          if (isSolutionLanguage(language)) score += 20;
+          if (/\\bclass\\s+Solution\\b/.test(code)) score += 30;
+          if (/^\\s*def\\s+\\w+\\s*\\(/m.test(code)) score += 12;
+          if (/\\bpublic\\s+class\\s+Solution\\b/.test(code)) score += 12;
+          if (/\\bfunction\\s+\\w+\\s*\\(|=>/.test(code)) score += 8;
+          if (/^\\s*#include\\s*</m.test(code)) score += 8;
+          if (language === "json" || language === "markdown" || language === "plaintext") score -= 30;
+          return score;
+        }
+
+        function looksLikeEditorCode(code) {
+          return String(code || "").length > 20 && /[\\n;{}()=<>[\\]]/.test(String(code || ""));
+        }
+
+        function isSolutionLanguage(language) {
+          return /^(c|cpp|csharp|go|golang|java|javascript|kotlin|python|python3|ruby|rust|swift|typescript)$/.test(String(language || "").toLowerCase());
         }
       })();
     `;
@@ -252,7 +304,9 @@ function normalizeLanguage(value) {
   const normalized = String(value || "").trim().toLowerCase();
   const aliases = {
     "c++": "cpp",
+    cpp: "cpp",
     "c#": "csharp",
+    csharp: "csharp",
     python3: "python3",
     python: "python",
     javascript: "javascript",
